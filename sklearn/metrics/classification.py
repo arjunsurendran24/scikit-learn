@@ -27,6 +27,7 @@ import numpy as np
 
 from scipy.sparse import coo_matrix
 from scipy.sparse import csr_matrix
+from numpy import count_nonzero as cnz
 
 from ..preprocessing import LabelBinarizer, label_binarize
 from ..preprocessing import LabelEncoder
@@ -183,7 +184,7 @@ def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None):
     y_type, y_true, y_pred = _check_targets(y_true, y_pred, exception=True)
     check_consistent_length(y_true, y_pred, sample_weight)
     if y_type.startswith('multilabel'):
-        differing_labels = count_nonzero((y_pred == y_true).all(axis=1))
+        differing_labels = cnz(np.asarray(y_pred == y_true).all(axis=1))
         score = differing_labels == 0
     else:
         score = y_true == y_pred
@@ -1646,7 +1647,6 @@ def hamming_loss(y_true, y_pred, labels=None, sample_weight=None):
     >>> hamming_loss(np.array([[0, 1], [1, 1]]), np.zeros((2, 2)))
     0.75
 
-    Multi-Class Multi-Label
     >>> hamming_loss(np.array([[1, 2, 3], [1, 1, 1]]), np.array([[1, 1, 1], [1, 1, 1]]))
     0.33
     """
