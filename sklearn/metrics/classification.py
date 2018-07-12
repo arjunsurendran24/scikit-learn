@@ -41,7 +41,7 @@ from ..utils.sparsefuncs import count_nonzero
 from ..exceptions import UndefinedMetricWarning
 
 
-def _check_targets(y_true, y_pred):
+def _check_targets(y_true, y_pred, exception=False):
     """Check that y_true and y_pred belong to the same classification task
 
     This converts multiclass or binary types to a common shape, and raises a
@@ -76,16 +76,18 @@ def _check_targets(y_true, y_pred):
     if y_type == set(["binary", "multiclass"]):
         y_type = set(["multiclass"])
 
-    # if len(y_type) > 1:
-    #     raise ValueError("Classification metrics can't handle a mix of {0} "
-    #                      "and {1} targets".format(type_true, type_pred))
+    if not exception:
+        if len(y_type) > 1:
+            raise ValueError("Classification metrics can't handle a mix of {0} "
+                            "and {1} targets".format(type_true, type_pred))
 
     # We can't have more than one value on y_type => The set is no more needed
     y_type = y_type.pop()
 
-    # No metrics support "multiclass-multioutput" format
-    if (y_type not in ["binary", "multiclass", "multilabel-indicator"]):
-        raise ValueError("{0} is not supported".format(y_type))
+    # Only accuracy_score and hamming_loss support "multiclass-multioutput" format
+    if not exception:
+        if (y_type not in ["binary", "multiclass", "multilabel-indicator"]):
+            raise ValueError("{0} is not supported".format(y_type))
 
     if y_type in ["binary", "multiclass"]:
         y_true = column_or_1d(y_true)
@@ -170,10 +172,15 @@ def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None):
 
     >>> accuracy_score(np.array([[0, 1], [1, 1]]), np.ones((2, 2)))
     0.5
+
+    Multilabel-Multiclass:
+
+    >>> accuracy_score(np.array([[1, 2, 3], [1, 1, 1]]), np.array([[1, 1, 1], [1, 1, 1]])
+    0.5
     """
 
     # Compute accuracy for each possible representation
-    y_type, y_true, y_pred = _check_targets(y_true, y_pred)
+    y_type, y_true, y_pred = _check_targets(y_true, y_pred, exception=True)
     check_consistent_length(y_true, y_pred, sample_weight)
     if y_type.startswith('multilabel'):
         differing_labels = count_nonzero((y_pred == y_true).all(axis=1))
@@ -1638,9 +1645,13 @@ def hamming_loss(y_true, y_pred, labels=None, sample_weight=None):
 
     >>> hamming_loss(np.array([[0, 1], [1, 1]]), np.zeros((2, 2)))
     0.75
+
+    Multi-Class Multi-Label
+    >>> hamming_loss(np.array([[1, 2, 3], [1, 1, 1]]), np.array([[1, 1, 1], [1, 1, 1]]))
+    0.33
     """
 
-    y_type, y_true, y_pred = _check_targets(y_true, y_pred)
+    y_type, y_true, y_pred = _check_targets(y_true, y_pred, exception=True)
     check_consistent_length(y_true, y_pred, sample_weight)
 
     if labels is None:
@@ -1654,7 +1665,7 @@ def hamming_loss(y_true, y_pred, labels=None, sample_weight=None):
         weight_average = np.mean(sample_weight)
 
     if y_type.startswith('multilabel'):
-        n_differences = count_nonzero(np.logical_xor(y_pred, y_true).any(axis=1),
+        n_differences = count_nonzero((y_pred != y_true) == True,
                                       sample_weight=sample_weight)
         return (n_differences /
                 (y_true.shape[0] * len(labels) * weight_average))
