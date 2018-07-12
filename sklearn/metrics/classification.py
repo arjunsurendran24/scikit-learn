@@ -76,9 +76,9 @@ def _check_targets(y_true, y_pred):
     if y_type == set(["binary", "multiclass"]):
         y_type = set(["multiclass"])
 
-    if len(y_type) > 1:
-        raise ValueError("Classification metrics can't handle a mix of {0} "
-                         "and {1} targets".format(type_true, type_pred))
+    # if len(y_type) > 1:
+    #     raise ValueError("Classification metrics can't handle a mix of {0} "
+    #                      "and {1} targets".format(type_true, type_pred))
 
     # We can't have more than one value on y_type => The set is no more needed
     y_type = y_type.pop()
@@ -176,7 +176,7 @@ def accuracy_score(y_true, y_pred, normalize=True, sample_weight=None):
     y_type, y_true, y_pred = _check_targets(y_true, y_pred)
     check_consistent_length(y_true, y_pred, sample_weight)
     if y_type.startswith('multilabel'):
-        differing_labels = count_nonzero(y_true - y_pred, axis=1)
+        differing_labels = count_nonzero((y_pred == y_true).all(axis=1))
         score = differing_labels == 0
     else:
         score = y_true == y_pred
@@ -1654,7 +1654,7 @@ def hamming_loss(y_true, y_pred, labels=None, sample_weight=None):
         weight_average = np.mean(sample_weight)
 
     if y_type.startswith('multilabel'):
-        n_differences = count_nonzero(y_true - y_pred,
+        n_differences = count_nonzero(np.logical_xor(y_pred, y_true).any(axis=1),
                                       sample_weight=sample_weight)
         return (n_differences /
                 (y_true.shape[0] * len(labels) * weight_average))
